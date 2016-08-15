@@ -128,6 +128,7 @@ func makeError(t string, errCode int, errMsg string) map[string]interface{} {
 func send(conn *net.UDPConn, addr *net.UDPAddr,
 	data map[string]interface{}) error {
 
+	conn.SetWriteDeadline(time.Now().Add(time.Second * 15))
 	_, err := conn.WriteToUDP([]byte(Encode(data)), addr)
 	return err
 }
@@ -147,7 +148,7 @@ type transaction struct {
 
 // transactionManager represents the manager of transactions.
 type transactionManager struct {
-	sync.RWMutex
+	*sync.RWMutex
 	transactions *syncedMap
 	index        *syncedMap
 	cursor       uint64
@@ -159,10 +160,11 @@ type transactionManager struct {
 // newTransactionManager returns new transactionManager pointer.
 func newTransactionManager(maxCursor uint64, dht *DHT) *transactionManager {
 	return &transactionManager{
+		RWMutex:      &sync.RWMutex{},
 		transactions: newSyncedMap(),
 		index:        newSyncedMap(),
 		maxCursor:    maxCursor,
-		queryChan:    make(chan *query),
+		queryChan:    make(chan *query, 1024),
 		dht:          dht,
 	}
 }
@@ -181,7 +183,7 @@ func (tm *transactionManager) newTransaction(id string, q *query) *transaction {
 	return &transaction{
 		id:       id,
 		query:    q,
-		response: make(chan struct{}, tm.dht.Try),
+		response: make(chan struct{}, tm.dht.Try+1),
 	}
 }
 

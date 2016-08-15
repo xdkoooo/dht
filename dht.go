@@ -246,7 +246,7 @@ func (dht *DHT) GetPeers(infoHash string) ([]*Peer, error) {
 func (dht *DHT) Run() {
 	var pkt packet
 
-	packetChan := make(chan packet)
+	packetChan := make(chan packet, 1024)
 	tick := time.Tick(dht.CheckKBucketPeriod)
 
 	dht.init()
